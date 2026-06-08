@@ -38,9 +38,10 @@ from base.base_crawler import AbstractStore
 from database.db_session import get_session
 from database.models import ZhihuContent, ZhihuComment, ZhihuCreator
 from tools import utils, words
-from var import crawler_type_var
+from var import crawler_type_var, source_keyword_var
 from tools.async_file_writer import AsyncFileWriter
 from database.mongodb_store_base import MongoDBStoreBase
+
 
 def calculate_number_of_files(file_store_path: str) -> int:
     """Calculate the prefix sorting number for data save files, supporting writing to different files for each run
@@ -52,7 +53,15 @@ def calculate_number_of_files(file_store_path: str) -> int:
     if not os.path.exists(file_store_path):
         return 1
     try:
-        return max([int(file_name.split("_")[0]) for file_name in os.listdir(file_store_path)]) + 1
+        return (
+            max(
+                [
+                    int(file_name.split("_")[0])
+                    for file_name in os.listdir(file_store_path)
+                ]
+            )
+            + 1
+        )
     except ValueError:
         return 1
 
@@ -60,7 +69,11 @@ def calculate_number_of_files(file_store_path: str) -> int:
 class ZhihuCsvStoreImplement(AbstractStore):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.writer = AsyncFileWriter(platform="zhihu", crawler_type=crawler_type_var.get())
+        self.writer = AsyncFileWriter(
+            platform="zhihu",
+            crawler_type=crawler_type_var.get(),
+            keyword=source_keyword_var.get(),
+        )
 
     async def store_content(self, content_item: Dict):
         """
@@ -167,7 +180,11 @@ class ZhihuDbStoreImplement(AbstractStore):
 class ZhihuJsonStoreImplement(AbstractStore):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.writer = AsyncFileWriter(platform="zhihu", crawler_type=crawler_type_var.get())
+        self.writer = AsyncFileWriter(
+            platform="zhihu",
+            crawler_type=crawler_type_var.get(),
+            keyword=source_keyword_var.get(),
+        )
 
     async def store_content(self, content_item: Dict):
         """
@@ -178,7 +195,9 @@ class ZhihuJsonStoreImplement(AbstractStore):
         Returns:
 
         """
-        await self.writer.write_single_item_to_json(item_type="contents", item=content_item)
+        await self.writer.write_single_item_to_json(
+            item_type="contents", item=content_item
+        )
 
     async def store_comment(self, comment_item: Dict):
         """
@@ -189,7 +208,9 @@ class ZhihuJsonStoreImplement(AbstractStore):
         Returns:
 
         """
-        await self.writer.write_single_item_to_json(item_type="comments", item=comment_item)
+        await self.writer.write_single_item_to_json(
+            item_type="comments", item=comment_item
+        )
 
     async def store_creator(self, creator: Dict):
         """
@@ -206,7 +227,11 @@ class ZhihuJsonStoreImplement(AbstractStore):
 class ZhihuJsonlStoreImplement(AbstractStore):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.writer = AsyncFileWriter(platform="zhihu", crawler_type=crawler_type_var.get())
+        self.writer = AsyncFileWriter(
+            platform="zhihu",
+            crawler_type=crawler_type_var.get(),
+            keyword=source_keyword_var.get(),
+        )
 
     async def store_content(self, content_item: Dict):
         await self.writer.write_to_jsonl(item_type="contents", item=content_item)
@@ -222,6 +247,7 @@ class ZhihuSqliteStoreImplement(ZhihuDbStoreImplement):
     """
     Zhihu content SQLite storage implementation
     """
+
     pass
 
 
@@ -242,11 +268,11 @@ class ZhihuMongoStoreImplement(AbstractStore):
             return
 
         await self.mongo_store.save_or_update(
-            collection_suffix="contents",
-            query={"note_id": note_id},
-            data=content_item
+            collection_suffix="contents", query={"note_id": note_id}, data=content_item
         )
-        utils.logger.info(f"[ZhihuMongoStoreImplement.store_content] Saved note {note_id} to MongoDB")
+        utils.logger.info(
+            f"[ZhihuMongoStoreImplement.store_content] Saved note {note_id} to MongoDB"
+        )
 
     async def store_comment(self, comment_item: Dict):
         """
@@ -261,9 +287,11 @@ class ZhihuMongoStoreImplement(AbstractStore):
         await self.mongo_store.save_or_update(
             collection_suffix="comments",
             query={"comment_id": comment_id},
-            data=comment_item
+            data=comment_item,
         )
-        utils.logger.info(f"[ZhihuMongoStoreImplement.store_comment] Saved comment {comment_id} to MongoDB")
+        utils.logger.info(
+            f"[ZhihuMongoStoreImplement.store_comment] Saved comment {comment_id} to MongoDB"
+        )
 
     async def store_creator(self, creator_item: Dict):
         """
@@ -276,11 +304,11 @@ class ZhihuMongoStoreImplement(AbstractStore):
             return
 
         await self.mongo_store.save_or_update(
-            collection_suffix="creators",
-            query={"user_id": user_id},
-            data=creator_item
+            collection_suffix="creators", query={"user_id": user_id}, data=creator_item
         )
-        utils.logger.info(f"[ZhihuMongoStoreImplement.store_creator] Saved creator {user_id} to MongoDB")
+        utils.logger.info(
+            f"[ZhihuMongoStoreImplement.store_creator] Saved creator {user_id} to MongoDB"
+        )
 
 
 class ZhihuExcelStoreImplement:
@@ -288,7 +316,7 @@ class ZhihuExcelStoreImplement:
 
     def __new__(cls, *args, **kwargs):
         from store.excel_store_base import ExcelStoreBase
+
         return ExcelStoreBase.get_instance(
-            platform="zhihu",
-            crawler_type=crawler_type_var.get()
+            platform="zhihu", crawler_type=crawler_type_var.get()
         )

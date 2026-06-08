@@ -38,7 +38,7 @@ from base.base_crawler import AbstractStore
 from database.models import TiebaNote, TiebaComment, TiebaCreator
 from tools import utils, words
 from database.db_session import get_session
-from var import crawler_type_var
+from var import crawler_type_var, source_keyword_var
 from tools.async_file_writer import AsyncFileWriter
 from database.mongodb_store_base import MongoDBStoreBase
 
@@ -53,7 +53,15 @@ def calculate_number_of_files(file_store_path: str) -> int:
     if not os.path.exists(file_store_path):
         return 1
     try:
-        return max([int(file_name.split("_")[0]) for file_name in os.listdir(file_store_path)]) + 1
+        return (
+            max(
+                [
+                    int(file_name.split("_")[0])
+                    for file_name in os.listdir(file_store_path)
+                ]
+            )
+            + 1
+        )
     except ValueError:
         return 1
 
@@ -61,7 +69,11 @@ def calculate_number_of_files(file_store_path: str) -> int:
 class TieBaCsvStoreImplement(AbstractStore):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.writer = AsyncFileWriter(platform="tieba", crawler_type=crawler_type_var.get())
+        self.writer = AsyncFileWriter(
+            platform="tieba",
+            crawler_type=crawler_type_var.get(),
+            keyword=source_keyword_var.get(),
+        )
 
     async def store_content(self, content_item: Dict):
         """
@@ -159,7 +171,11 @@ class TieBaDbStoreImplement(AbstractStore):
 class TieBaJsonStoreImplement(AbstractStore):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.writer = AsyncFileWriter(platform="tieba", crawler_type=crawler_type_var.get())
+        self.writer = AsyncFileWriter(
+            platform="tieba",
+            crawler_type=crawler_type_var.get(),
+            keyword=source_keyword_var.get(),
+        )
 
     async def store_content(self, content_item: Dict):
         """
@@ -170,7 +186,9 @@ class TieBaJsonStoreImplement(AbstractStore):
         Returns:
 
         """
-        await self.writer.write_single_item_to_json(item_type="contents", item=content_item)
+        await self.writer.write_single_item_to_json(
+            item_type="contents", item=content_item
+        )
 
     async def store_comment(self, comment_item: Dict):
         """
@@ -181,7 +199,9 @@ class TieBaJsonStoreImplement(AbstractStore):
         Returns:
 
         """
-        await self.writer.write_single_item_to_json(item_type="comments", item=comment_item)
+        await self.writer.write_single_item_to_json(
+            item_type="comments", item=comment_item
+        )
 
     async def store_creator(self, creator: Dict):
         """
@@ -198,7 +218,11 @@ class TieBaJsonStoreImplement(AbstractStore):
 class TieBaJsonlStoreImplement(AbstractStore):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.writer = AsyncFileWriter(platform="tieba", crawler_type=crawler_type_var.get())
+        self.writer = AsyncFileWriter(
+            platform="tieba",
+            crawler_type=crawler_type_var.get(),
+            keyword=source_keyword_var.get(),
+        )
 
     async def store_content(self, content_item: Dict):
         await self.writer.write_to_jsonl(item_type="contents", item=content_item)
@@ -214,6 +238,7 @@ class TieBaSqliteStoreImplement(TieBaDbStoreImplement):
     """
     Tieba sqlite store implement
     """
+
     pass
 
 
@@ -234,11 +259,11 @@ class TieBaMongoStoreImplement(AbstractStore):
             return
 
         await self.mongo_store.save_or_update(
-            collection_suffix="contents",
-            query={"note_id": note_id},
-            data=content_item
+            collection_suffix="contents", query={"note_id": note_id}, data=content_item
         )
-        utils.logger.info(f"[TieBaMongoStoreImplement.store_content] Saved note {note_id} to MongoDB")
+        utils.logger.info(
+            f"[TieBaMongoStoreImplement.store_content] Saved note {note_id} to MongoDB"
+        )
 
     async def store_comment(self, comment_item: Dict):
         """
@@ -253,9 +278,11 @@ class TieBaMongoStoreImplement(AbstractStore):
         await self.mongo_store.save_or_update(
             collection_suffix="comments",
             query={"comment_id": comment_id},
-            data=comment_item
+            data=comment_item,
         )
-        utils.logger.info(f"[TieBaMongoStoreImplement.store_comment] Saved comment {comment_id} to MongoDB")
+        utils.logger.info(
+            f"[TieBaMongoStoreImplement.store_comment] Saved comment {comment_id} to MongoDB"
+        )
 
     async def store_creator(self, creator_item: Dict):
         """
@@ -268,11 +295,11 @@ class TieBaMongoStoreImplement(AbstractStore):
             return
 
         await self.mongo_store.save_or_update(
-            collection_suffix="creators",
-            query={"user_id": user_id},
-            data=creator_item
+            collection_suffix="creators", query={"user_id": user_id}, data=creator_item
         )
-        utils.logger.info(f"[TieBaMongoStoreImplement.store_creator] Saved creator {user_id} to MongoDB")
+        utils.logger.info(
+            f"[TieBaMongoStoreImplement.store_creator] Saved creator {user_id} to MongoDB"
+        )
 
 
 class TieBaExcelStoreImplement:
@@ -280,7 +307,7 @@ class TieBaExcelStoreImplement:
 
     def __new__(cls, *args, **kwargs):
         from store.excel_store_base import ExcelStoreBase
+
         return ExcelStoreBase.get_instance(
-            platform="tieba",
-            crawler_type=crawler_type_var.get()
+            platform="tieba", crawler_type=crawler_type_var.get()
         )

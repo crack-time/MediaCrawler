@@ -34,15 +34,20 @@ from database.models import XhsNote, XhsNoteComment, XhsCreator
 
 from tools.async_file_writer import AsyncFileWriter
 from tools.time_util import get_current_timestamp
-from var import crawler_type_var
+from var import crawler_type_var, source_keyword_var
 from database.mongodb_store_base import MongoDBStoreBase
 from tools import utils
 from store.excel_store_base import ExcelStoreBase
 
+
 class XhsCsvStoreImplement(AbstractStore):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.writer = AsyncFileWriter(platform="xhs", crawler_type=crawler_type_var.get())
+        self.writer = AsyncFileWriter(
+            platform="xhs",
+            crawler_type=crawler_type_var.get(),
+            keyword=source_keyword_var.get(),
+        )
 
     async def store_content(self, content_item: Dict):
         """
@@ -60,7 +65,6 @@ class XhsCsvStoreImplement(AbstractStore):
         """
         await self.writer.write_to_csv(item_type="comments", item=comment_item)
 
-
     async def store_creator(self, creator_item: Dict):
         pass
 
@@ -71,7 +75,11 @@ class XhsCsvStoreImplement(AbstractStore):
 class XhsJsonStoreImplement(AbstractStore):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.writer = AsyncFileWriter(platform="xhs", crawler_type=crawler_type_var.get())
+        self.writer = AsyncFileWriter(
+            platform="xhs",
+            crawler_type=crawler_type_var.get(),
+            keyword=source_keyword_var.get(),
+        )
 
     async def store_content(self, content_item: Dict):
         """
@@ -79,7 +87,9 @@ class XhsJsonStoreImplement(AbstractStore):
         :param content_item:
         :return:
         """
-        await self.writer.write_single_item_to_json(item_type="contents", item=content_item)
+        await self.writer.write_single_item_to_json(
+            item_type="contents", item=content_item
+        )
 
     async def store_comment(self, comment_item: Dict):
         """
@@ -87,7 +97,9 @@ class XhsJsonStoreImplement(AbstractStore):
         :param comment_item:
         :return:
         """
-        await self.writer.write_single_item_to_json(item_type="comments", item=comment_item)
+        await self.writer.write_single_item_to_json(
+            item_type="comments", item=comment_item
+        )
 
     async def store_creator(self, creator_item: Dict):
         pass
@@ -100,11 +112,14 @@ class XhsJsonStoreImplement(AbstractStore):
         pass
 
 
-
 class XhsJsonlStoreImplement(AbstractStore):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.writer = AsyncFileWriter(platform="xhs", crawler_type=crawler_type_var.get())
+        self.writer = AsyncFileWriter(
+            platform="xhs",
+            crawler_type=crawler_type_var.get(),
+            keyword=source_keyword_var.get(),
+        )
 
     async def store_content(self, content_item: Dict):
         await self.writer.write_to_jsonl(item_type="contents", item=content_item)
@@ -158,7 +173,7 @@ class XhsDbStoreImplement(AbstractStore):
             tag_list=json.dumps(content_item.get("tag_list")),
             note_url=content_item.get("note_url"),
             source_keyword=content_item.get("source_keyword", ""),
-            xsec_token=content_item.get("xsec_token", "")
+            xsec_token=content_item.get("xsec_token", ""),
         )
         session.add(note)
 
@@ -210,7 +225,7 @@ class XhsDbStoreImplement(AbstractStore):
             sub_comment_count=int(comment_item.get("sub_comment_count", 0) or 0),
             pictures=json.dumps(comment_item.get("pictures")),
             parent_comment_id=str(comment_item.get("parent_comment_id", "")),
-            like_count=str(comment_item.get("like_count"))
+            like_count=str(comment_item.get("like_count")),
         )
         session.add(comment)
 
@@ -222,7 +237,11 @@ class XhsDbStoreImplement(AbstractStore):
             "like_count": str(comment_item.get("like_count")),
             "sub_comment_count": int(comment_item.get("sub_comment_count", 0) or 0),
         }
-        stmt = update(XhsNoteComment).where(XhsNoteComment.comment_id == comment_id).values(**update_data)
+        stmt = (
+            update(XhsNoteComment)
+            .where(XhsNoteComment.comment_id == comment_id)
+            .values(**update_data)
+        )
         await session.execute(stmt)
 
     async def comment_is_exist(self, session: AsyncSession, comment_id: str) -> bool:
@@ -255,7 +274,7 @@ class XhsDbStoreImplement(AbstractStore):
             follows=str(creator_item.get("follows")),
             fans=str(creator_item.get("fans")),
             interaction=str(creator_item.get("interaction")),
-            tag_list=json.dumps(creator_item.get("tag_list"))
+            tag_list=json.dumps(creator_item.get("tag_list")),
         )
         session.add(creator)
 
@@ -270,9 +289,13 @@ class XhsDbStoreImplement(AbstractStore):
             "follows": str(creator_item.get("follows")),
             "fans": str(creator_item.get("fans")),
             "interaction": str(creator_item.get("interaction")),
-            "tag_list": json.dumps(creator_item.get("tag_list"))
+            "tag_list": json.dumps(creator_item.get("tag_list")),
         }
-        stmt = update(XhsCreator).where(XhsCreator.user_id == user_id).values(**update_data)
+        stmt = (
+            update(XhsCreator)
+            .where(XhsCreator.user_id == user_id)
+            .values(**update_data)
+        )
         await session.execute(stmt)
 
     async def creator_is_exist(self, session: AsyncSession, user_id: str) -> bool:
@@ -316,11 +339,11 @@ class XhsMongoStoreImplement(AbstractStore):
             return
 
         await self.mongo_store.save_or_update(
-            collection_suffix="contents",
-            query={"note_id": note_id},
-            data=content_item
+            collection_suffix="contents", query={"note_id": note_id}, data=content_item
         )
-        utils.logger.info(f"[XhsMongoStoreImplement.store_content] Saved note {note_id} to MongoDB")
+        utils.logger.info(
+            f"[XhsMongoStoreImplement.store_content] Saved note {note_id} to MongoDB"
+        )
 
     async def store_comment(self, comment_item: Dict):
         """
@@ -335,9 +358,11 @@ class XhsMongoStoreImplement(AbstractStore):
         await self.mongo_store.save_or_update(
             collection_suffix="comments",
             query={"comment_id": comment_id},
-            data=comment_item
+            data=comment_item,
         )
-        utils.logger.info(f"[XhsMongoStoreImplement.store_comment] Saved comment {comment_id} to MongoDB")
+        utils.logger.info(
+            f"[XhsMongoStoreImplement.store_comment] Saved comment {comment_id} to MongoDB"
+        )
 
     async def store_creator(self, creator_item: Dict):
         """
@@ -350,11 +375,11 @@ class XhsMongoStoreImplement(AbstractStore):
             return
 
         await self.mongo_store.save_or_update(
-            collection_suffix="creators",
-            query={"user_id": user_id},
-            data=creator_item
+            collection_suffix="creators", query={"user_id": user_id}, data=creator_item
         )
-        utils.logger.info(f"[XhsMongoStoreImplement.store_creator] Saved creator {user_id} to MongoDB")
+        utils.logger.info(
+            f"[XhsMongoStoreImplement.store_creator] Saved creator {user_id} to MongoDB"
+        )
 
 
 class XhsExcelStoreImplement:
@@ -362,7 +387,7 @@ class XhsExcelStoreImplement:
 
     def __new__(cls, *args, **kwargs):
         from store.excel_store_base import ExcelStoreBase
+
         return ExcelStoreBase.get_instance(
-            platform="xhs",
-            crawler_type=crawler_type_var.get()
+            platform="xhs", crawler_type=crawler_type_var.get()
         )

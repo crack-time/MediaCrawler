@@ -38,7 +38,7 @@ from base.base_crawler import AbstractStore
 from database.db_session import get_session
 from database.models import KuaishouVideo, KuaishouVideoComment
 from tools import utils, words
-from var import crawler_type_var
+from var import crawler_type_var, source_keyword_var
 from database.mongodb_store_base import MongoDBStoreBase
 
 
@@ -52,7 +52,15 @@ def calculate_number_of_files(file_store_path: str) -> int:
     if not os.path.exists(file_store_path):
         return 1
     try:
-        return max([int(file_name.split("_")[0]) for file_name in os.listdir(file_store_path)]) + 1
+        return (
+            max(
+                [
+                    int(file_name.split("_")[0])
+                    for file_name in os.listdir(file_store_path)
+                ]
+            )
+            + 1
+        )
     except ValueError:
         return 1
 
@@ -60,7 +68,11 @@ def calculate_number_of_files(file_store_path: str) -> int:
 class KuaishouCsvStoreImplement(AbstractStore):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.writer = AsyncFileWriter(platform="kuaishou", crawler_type=crawler_type_var.get())
+        self.writer = AsyncFileWriter(
+            platform="kuaishou",
+            crawler_type=crawler_type_var.get(),
+            keyword=source_keyword_var.get(),
+        )
 
     async def store_content(self, content_item: Dict):
         """
@@ -100,7 +112,9 @@ class KuaishouDbStoreImplement(AbstractStore):
         """
         video_id = content_item.get("video_id")
         async with get_session() as session:
-            result = await session.execute(select(KuaishouVideo).where(KuaishouVideo.video_id == video_id))
+            result = await session.execute(
+                select(KuaishouVideo).where(KuaishouVideo.video_id == video_id)
+            )
             video_detail = result.scalar_one_or_none()
 
             if not video_detail:
@@ -122,7 +136,10 @@ class KuaishouDbStoreImplement(AbstractStore):
         comment_id = comment_item.get("comment_id")
         async with get_session() as session:
             result = await session.execute(
-                select(KuaishouVideoComment).where(KuaishouVideoComment.comment_id == comment_id))
+                select(KuaishouVideoComment).where(
+                    KuaishouVideoComment.comment_id == comment_id
+                )
+            )
             comment_detail = result.scalar_one_or_none()
 
             if not comment_detail:
@@ -139,7 +156,11 @@ class KuaishouDbStoreImplement(AbstractStore):
 class KuaishouJsonStoreImplement(AbstractStore):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.writer = AsyncFileWriter(platform="kuaishou", crawler_type=crawler_type_var.get())
+        self.writer = AsyncFileWriter(
+            platform="kuaishou",
+            crawler_type=crawler_type_var.get(),
+            keyword=source_keyword_var.get(),
+        )
 
     async def store_content(self, content_item: Dict):
         """
@@ -150,7 +171,9 @@ class KuaishouJsonStoreImplement(AbstractStore):
         Returns:
 
         """
-        await self.writer.write_single_item_to_json(item_type="contents", item=content_item)
+        await self.writer.write_single_item_to_json(
+            item_type="contents", item=content_item
+        )
 
     async def store_comment(self, comment_item: Dict):
         """
@@ -161,7 +184,9 @@ class KuaishouJsonStoreImplement(AbstractStore):
         Returns:
 
         """
-        await self.writer.write_single_item_to_json(item_type="comments", item=comment_item)
+        await self.writer.write_single_item_to_json(
+            item_type="comments", item=comment_item
+        )
 
     async def store_creator(self, creator: Dict):
         pass
@@ -170,7 +195,11 @@ class KuaishouJsonStoreImplement(AbstractStore):
 class KuaishouJsonlStoreImplement(AbstractStore):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.writer = AsyncFileWriter(platform="kuaishou", crawler_type=crawler_type_var.get())
+        self.writer = AsyncFileWriter(
+            platform="kuaishou",
+            crawler_type=crawler_type_var.get(),
+            keyword=source_keyword_var.get(),
+        )
 
     async def store_content(self, content_item: Dict):
         await self.writer.write_to_jsonl(item_type="contents", item=content_item)
@@ -206,9 +235,11 @@ class KuaishouMongoStoreImplement(AbstractStore):
         await self.mongo_store.save_or_update(
             collection_suffix="contents",
             query={"video_id": video_id},
-            data=content_item
+            data=content_item,
         )
-        utils.logger.info(f"[KuaishouMongoStoreImplement.store_content] Saved video {video_id} to MongoDB")
+        utils.logger.info(
+            f"[KuaishouMongoStoreImplement.store_content] Saved video {video_id} to MongoDB"
+        )
 
     async def store_comment(self, comment_item: Dict):
         """
@@ -223,9 +254,11 @@ class KuaishouMongoStoreImplement(AbstractStore):
         await self.mongo_store.save_or_update(
             collection_suffix="comments",
             query={"comment_id": comment_id},
-            data=comment_item
+            data=comment_item,
         )
-        utils.logger.info(f"[KuaishouMongoStoreImplement.store_comment] Saved comment {comment_id} to MongoDB")
+        utils.logger.info(
+            f"[KuaishouMongoStoreImplement.store_comment] Saved comment {comment_id} to MongoDB"
+        )
 
     async def store_creator(self, creator_item: Dict):
         """
@@ -238,11 +271,11 @@ class KuaishouMongoStoreImplement(AbstractStore):
             return
 
         await self.mongo_store.save_or_update(
-            collection_suffix="creators",
-            query={"user_id": user_id},
-            data=creator_item
+            collection_suffix="creators", query={"user_id": user_id}, data=creator_item
         )
-        utils.logger.info(f"[KuaishouMongoStoreImplement.store_creator] Saved creator {user_id} to MongoDB")
+        utils.logger.info(
+            f"[KuaishouMongoStoreImplement.store_creator] Saved creator {user_id} to MongoDB"
+        )
 
 
 class KuaishouExcelStoreImplement:
@@ -250,7 +283,7 @@ class KuaishouExcelStoreImplement:
 
     def __new__(cls, *args, **kwargs):
         from store.excel_store_base import ExcelStoreBase
+
         return ExcelStoreBase.get_instance(
-            platform="kuaishou",
-            crawler_type=crawler_type_var.get()
+            platform="kuaishou", crawler_type=crawler_type_var.get()
         )

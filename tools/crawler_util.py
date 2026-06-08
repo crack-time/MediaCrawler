@@ -33,7 +33,7 @@ from io import BytesIO
 from typing import Dict, List, Optional, Tuple, cast
 
 import httpx
-from PIL import Image, ImageDraw, ImageShow
+from PIL import Image, ImageDraw
 from playwright.async_api import BrowserContext, Cookie, Page
 
 from . import utils
@@ -49,13 +49,19 @@ async def find_login_qrcode(page: Page, selector: str) -> str:
         login_qrcode_img = str(await elements.get_property("src"))  # type: ignore
         if "http://" in login_qrcode_img or "https://" in login_qrcode_img:
             async with make_async_client(follow_redirects=True) as client:
-                utils.logger.info(f"[find_login_qrcode] get qrcode by url:{login_qrcode_img}")
-                resp = await client.get(login_qrcode_img, headers={"User-Agent": get_user_agent()})
+                utils.logger.info(
+                    f"[find_login_qrcode] get qrcode by url:{login_qrcode_img}"
+                )
+                resp = await client.get(
+                    login_qrcode_img, headers={"User-Agent": get_user_agent()}
+                )
                 if resp.status_code == 200:
                     image_data = resp.content
-                    base64_image = base64.b64encode(image_data).decode('utf-8')
+                    base64_image = base64.b64encode(image_data).decode("utf-8")
                     return base64_image
-                raise Exception(f"fetch login image url failed, response message:{resp.text}")
+                raise Exception(
+                    f"fetch login image url failed, response message:{resp.text}"
+                )
         return login_qrcode_img
 
     except Exception as e:
@@ -81,7 +87,7 @@ async def find_qrcode_img_from_canvas(page: Page, canvas_selector: str) -> str:
     screenshot = await canvas.screenshot()
 
     # Convert screenshot to base64 format
-    base64_image = base64.b64encode(screenshot).decode('utf-8')
+    base64_image = base64.b64encode(screenshot).decode("utf-8")
     return base64_image
 
 
@@ -94,12 +100,11 @@ def show_qrcode(qr_code) -> None:  # type: ignore
 
     # Add a square border around the QR code and display it within the border to improve scanning accuracy.
     width, height = image.size
-    new_image = Image.new('RGB', (width + 20, height + 20), color=(255, 255, 255))
+    new_image = Image.new("RGB", (width + 20, height + 20), color=(255, 255, 255))
     new_image.paste(image, (10, 10))
     draw = ImageDraw.Draw(new_image)
     draw.rectangle((0, 0, width + 19, height + 19), outline=(0, 0, 0), width=1)
-    del ImageShow.UnixViewer.options["save_all"]
-    new_image.show()
+    new_image.save("login_qrcode.png")
 
 
 def get_user_agent() -> str:
@@ -123,7 +128,7 @@ def get_user_agent() -> str:
         "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.5060.53 Safari/537.36",
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.4844.84 Safari/537.36",
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.5112.79 Safari/537.36"
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.5112.79 Safari/537.36",
     ]
     return random.choice(ua_list)
 
@@ -138,10 +143,12 @@ def get_mobile_user_agent() -> str:
 def convert_cookies(cookies: Optional[List[Cookie]]) -> Tuple[str, Dict]:
     if not cookies:
         return "", {}
-    cookies_str = ";".join([f"{cookie.get('name')}={cookie.get('value')}" for cookie in cookies])
+    cookies_str = ";".join(
+        [f"{cookie.get('name')}={cookie.get('value')}" for cookie in cookies]
+    )
     cookie_dict = dict()
     for cookie in cookies:
-        cookie_dict[cookie.get('name')] = cookie.get('value')
+        cookie_dict[cookie.get("name")] = cookie.get("value")
     return cookies_str, cookie_dict
 
 
@@ -178,7 +185,7 @@ def match_interact_info_count(count_str: str) -> int:
     if not count_str:
         return 0
 
-    match = re.search(r'\d+', count_str)
+    match = re.search(r"\d+", count_str)
     if match:
         number = match.group()
         return int(number)
@@ -190,20 +197,21 @@ def format_proxy_info(ip_proxy_info) -> Tuple[Optional[Dict], Optional[str]]:
     """format proxy info for playwright and httpx"""
     # fix circular import issue
     from proxy.proxy_ip_pool import IpInfoModel
+
     ip_proxy_info = cast(IpInfoModel, ip_proxy_info)
 
     # Playwright proxy server should be in format "host:port" without protocol prefix
     server = f"{ip_proxy_info.ip}:{ip_proxy_info.port}"
-    
+
     playwright_proxy = {
         "server": server,
     }
-    
+
     # Only add username and password if they are not empty
     if ip_proxy_info.user and ip_proxy_info.password:
         playwright_proxy["username"] = ip_proxy_info.user
         playwright_proxy["password"] = ip_proxy_info.password
-    
+
     # httpx 0.28.1 requires passing proxy URL string directly, not a dictionary
     if ip_proxy_info.user and ip_proxy_info.password:
         httpx_proxy = f"http://{ip_proxy_info.user}:{ip_proxy_info.password}@{ip_proxy_info.ip}:{ip_proxy_info.port}"
@@ -218,10 +226,11 @@ def extract_text_from_html(html: str) -> str:
         return ""
 
     # Remove script and style elements
-    clean_html = re.sub(r'<(script|style)[^>]*>.*?</\1>', '', html, flags=re.DOTALL)
+    clean_html = re.sub(r"<(script|style)[^>]*>.*?</\1>", "", html, flags=re.DOTALL)
     # Remove all other tags
-    clean_text = re.sub(r'<[^>]+>', '', clean_html).strip()
+    clean_text = re.sub(r"<[^>]+>", "", clean_html).strip()
     return clean_text
+
 
 def extract_url_params_to_dict(url: str) -> Dict:
     """Extract URL parameters to dict"""

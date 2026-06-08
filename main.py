@@ -22,12 +22,20 @@ import io
 
 # Force UTF-8 encoding for stdout/stderr to prevent encoding errors
 # when outputting Chinese characters in non-UTF-8 terminals
-if sys.stdout and hasattr(sys.stdout, 'buffer'):
-    if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-if sys.stderr and hasattr(sys.stderr, 'buffer'):
-    if sys.stderr.encoding and sys.stderr.encoding.lower() != 'utf-8':
-        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+if sys.stdout and hasattr(sys.stdout, "buffer"):
+    if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
+        sys.stdout = io.TextIOWrapper(
+            sys.stdout.buffer, encoding="utf-8", errors="replace"
+        )
+if sys.stderr and hasattr(sys.stderr, "buffer"):
+    if sys.stderr.encoding and sys.stderr.encoding.lower() != "utf-8":
+        sys.stderr = io.TextIOWrapper(
+            sys.stderr.buffer, encoding="utf-8", errors="replace"
+        )
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 import asyncio
 from typing import Optional, Type
@@ -63,7 +71,9 @@ class CrawlerFactory:
         crawler_class = CrawlerFactory.CRAWLERS.get(platform)
         if not crawler_class:
             supported = ", ".join(sorted(CrawlerFactory.CRAWLERS))
-            raise ValueError(f"Invalid media platform: {platform!r}. Supported: {supported}")
+            raise ValueError(
+                f"Invalid media platform: {platform!r}. Supported: {supported}"
+            )
         return crawler_class()
 
 
@@ -84,7 +94,10 @@ def _flush_excel_if_needed() -> None:
 
 
 async def _generate_wordcloud_if_needed() -> None:
-    if config.SAVE_DATA_OPTION not in ("json", "jsonl") or not config.ENABLE_GET_WORDCLOUD:
+    if (
+        config.SAVE_DATA_OPTION not in ("json", "jsonl")
+        or not config.ENABLE_GET_WORDCLOUD
+    ):
         return
 
     try:
@@ -138,6 +151,7 @@ async def async_cleanup() -> None:
     if config.SAVE_DATA_OPTION in ("db", "sqlite"):
         await db.close()
 
+
 if __name__ == "__main__":
     from tools.app_runner import run
 
@@ -154,4 +168,9 @@ if __name__ == "__main__":
         except Exception:
             pass
 
-    run(main, async_cleanup, cleanup_timeout_seconds=15.0, on_first_interrupt=_force_stop)
+    run(
+        main,
+        async_cleanup,
+        cleanup_timeout_seconds=15.0,
+        on_first_interrupt=_force_stop,
+    )

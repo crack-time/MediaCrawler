@@ -39,7 +39,7 @@ from database.models import WeiboCreator, WeiboNote, WeiboNoteComment
 from tools import utils, words
 from tools.async_file_writer import AsyncFileWriter
 from database.db_session import get_session
-from var import crawler_type_var
+from var import crawler_type_var, source_keyword_var
 from database.mongodb_store_base import MongoDBStoreBase
 
 
@@ -53,7 +53,15 @@ def calculate_number_of_files(file_store_path: str) -> int:
     if not os.path.exists(file_store_path):
         return 1
     try:
-        return max([int(file_name.split("_")[0]) for file_name in os.listdir(file_store_path)]) + 1
+        return (
+            max(
+                [
+                    int(file_name.split("_")[0])
+                    for file_name in os.listdir(file_store_path)
+                ]
+            )
+            + 1
+        )
     except ValueError:
         return 1
 
@@ -61,7 +69,11 @@ def calculate_number_of_files(file_store_path: str) -> int:
 class WeiboCsvStoreImplement(AbstractStore):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.writer = AsyncFileWriter(platform="weibo", crawler_type=crawler_type_var.get())
+        self.writer = AsyncFileWriter(
+            platform="weibo",
+            crawler_type=crawler_type_var.get(),
+            keyword=source_keyword_var.get(),
+        )
 
     async def store_content(self, content_item: Dict):
         """
@@ -98,7 +110,6 @@ class WeiboCsvStoreImplement(AbstractStore):
 
 
 class WeiboDbStoreImplement(AbstractStore):
-
     async def store_content(self, content_item: Dict):
         """
         Weibo content DB storage implementation
@@ -139,12 +150,20 @@ class WeiboDbStoreImplement(AbstractStore):
         comment_item["comment_id"] = comment_id
         comment_item["note_id"] = int(comment_item.get("note_id", 0) or 0)
         comment_item["create_time"] = int(comment_item.get("create_time", 0) or 0)
-        comment_item["comment_like_count"] = str(comment_item.get("comment_like_count", "0"))
-        comment_item["sub_comment_count"] = str(comment_item.get("sub_comment_count", "0"))
-        comment_item["parent_comment_id"] = str(comment_item.get("parent_comment_id", "0"))
+        comment_item["comment_like_count"] = str(
+            comment_item.get("comment_like_count", "0")
+        )
+        comment_item["sub_comment_count"] = str(
+            comment_item.get("sub_comment_count", "0")
+        )
+        comment_item["parent_comment_id"] = str(
+            comment_item.get("parent_comment_id", "0")
+        )
 
         async with get_session() as session:
-            stmt = select(WeiboNoteComment).where(WeiboNoteComment.comment_id == comment_id)
+            stmt = select(WeiboNoteComment).where(
+                WeiboNoteComment.comment_id == comment_id
+            )
             res = await session.execute(stmt)
             db_comment = res.scalar_one_or_none()
             if db_comment:
@@ -190,7 +209,11 @@ class WeiboDbStoreImplement(AbstractStore):
 class WeiboJsonStoreImplement(AbstractStore):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.writer = AsyncFileWriter(platform="weibo", crawler_type=crawler_type_var.get())
+        self.writer = AsyncFileWriter(
+            platform="weibo",
+            crawler_type=crawler_type_var.get(),
+            keyword=source_keyword_var.get(),
+        )
 
     async def store_content(self, content_item: Dict):
         """
@@ -201,7 +224,9 @@ class WeiboJsonStoreImplement(AbstractStore):
         Returns:
 
         """
-        await self.writer.write_single_item_to_json(item_type="contents", item=content_item)
+        await self.writer.write_single_item_to_json(
+            item_type="contents", item=content_item
+        )
 
     async def store_comment(self, comment_item: Dict):
         """
@@ -212,7 +237,9 @@ class WeiboJsonStoreImplement(AbstractStore):
         Returns:
 
         """
-        await self.writer.write_single_item_to_json(item_type="comments", item=comment_item)
+        await self.writer.write_single_item_to_json(
+            item_type="comments", item=comment_item
+        )
 
     async def store_creator(self, creator: Dict):
         """
@@ -229,7 +256,11 @@ class WeiboJsonStoreImplement(AbstractStore):
 class WeiboJsonlStoreImplement(AbstractStore):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.writer = AsyncFileWriter(platform="weibo", crawler_type=crawler_type_var.get())
+        self.writer = AsyncFileWriter(
+            platform="weibo",
+            crawler_type=crawler_type_var.get(),
+            keyword=source_keyword_var.get(),
+        )
 
     async def store_content(self, content_item: Dict):
         await self.writer.write_to_jsonl(item_type="contents", item=content_item)
@@ -245,6 +276,7 @@ class WeiboSqliteStoreImplement(WeiboDbStoreImplement):
     """
     Weibo content SQLite storage implementation
     """
+
     pass
 
 
@@ -265,11 +297,11 @@ class WeiboMongoStoreImplement(AbstractStore):
             return
 
         await self.mongo_store.save_or_update(
-            collection_suffix="contents",
-            query={"note_id": note_id},
-            data=content_item
+            collection_suffix="contents", query={"note_id": note_id}, data=content_item
         )
-        utils.logger.info(f"[WeiboMongoStoreImplement.store_content] Saved note {note_id} to MongoDB")
+        utils.logger.info(
+            f"[WeiboMongoStoreImplement.store_content] Saved note {note_id} to MongoDB"
+        )
 
     async def store_comment(self, comment_item: Dict):
         """
@@ -284,9 +316,11 @@ class WeiboMongoStoreImplement(AbstractStore):
         await self.mongo_store.save_or_update(
             collection_suffix="comments",
             query={"comment_id": comment_id},
-            data=comment_item
+            data=comment_item,
         )
-        utils.logger.info(f"[WeiboMongoStoreImplement.store_comment] Saved comment {comment_id} to MongoDB")
+        utils.logger.info(
+            f"[WeiboMongoStoreImplement.store_comment] Saved comment {comment_id} to MongoDB"
+        )
 
     async def store_creator(self, creator_item: Dict):
         """
@@ -299,11 +333,11 @@ class WeiboMongoStoreImplement(AbstractStore):
             return
 
         await self.mongo_store.save_or_update(
-            collection_suffix="creators",
-            query={"user_id": user_id},
-            data=creator_item
+            collection_suffix="creators", query={"user_id": user_id}, data=creator_item
         )
-        utils.logger.info(f"[WeiboMongoStoreImplement.store_creator] Saved creator {user_id} to MongoDB")
+        utils.logger.info(
+            f"[WeiboMongoStoreImplement.store_creator] Saved creator {user_id} to MongoDB"
+        )
 
 
 class WeiboExcelStoreImplement:
@@ -311,7 +345,7 @@ class WeiboExcelStoreImplement:
 
     def __new__(cls, *args, **kwargs):
         from store.excel_store_base import ExcelStoreBase
+
         return ExcelStoreBase.get_instance(
-            platform="weibo",
-            crawler_type=crawler_type_var.get()
+            platform="weibo", crawler_type=crawler_type_var.get()
         )

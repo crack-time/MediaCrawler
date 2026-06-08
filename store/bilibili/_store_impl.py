@@ -36,10 +36,16 @@ from sqlalchemy.orm import sessionmaker
 import config
 from base.base_crawler import AbstractStore
 from database.db_session import get_session
-from database.models import BilibiliVideoComment, BilibiliVideo, BilibiliUpInfo, BilibiliUpDynamic, BilibiliContactInfo
+from database.models import (
+    BilibiliVideoComment,
+    BilibiliVideo,
+    BilibiliUpInfo,
+    BilibiliUpDynamic,
+    BilibiliContactInfo,
+)
 from tools.async_file_writer import AsyncFileWriter
 from tools import utils, words
-from var import crawler_type_var
+from var import crawler_type_var, source_keyword_var
 from database.mongodb_store_base import MongoDBStoreBase
 
 
@@ -47,7 +53,8 @@ class BiliCsvStoreImplement(AbstractStore):
     def __init__(self):
         self.file_writer = AsyncFileWriter(
             crawler_type=crawler_type_var.get(),
-            platform="bili"
+            platform="bili",
+            keyword=source_keyword_var.get(),
         )
 
     async def store_content(self, content_item: Dict):
@@ -59,10 +66,7 @@ class BiliCsvStoreImplement(AbstractStore):
         Returns:
 
         """
-        await self.file_writer.write_to_csv(
-            item=content_item,
-            item_type="videos"
-        )
+        await self.file_writer.write_to_csv(item=content_item, item_type="videos")
 
     async def store_comment(self, comment_item: Dict):
         """
@@ -73,10 +77,7 @@ class BiliCsvStoreImplement(AbstractStore):
         Returns:
 
         """
-        await self.file_writer.write_to_csv(
-            item=comment_item,
-            item_type="comments"
-        )
+        await self.file_writer.write_to_csv(item=comment_item, item_type="comments")
 
     async def store_creator(self, creator: Dict):
         """
@@ -87,10 +88,7 @@ class BiliCsvStoreImplement(AbstractStore):
         Returns:
 
         """
-        await self.file_writer.write_to_csv(
-            item=creator,
-            item_type="creators"
-        )
+        await self.file_writer.write_to_csv(item=creator, item_type="creators")
 
     async def store_contact(self, contact_item: Dict):
         """
@@ -101,10 +99,7 @@ class BiliCsvStoreImplement(AbstractStore):
         Returns:
 
         """
-        await self.file_writer.write_to_csv(
-            item=contact_item,
-            item_type="contacts"
-        )
+        await self.file_writer.write_to_csv(item=contact_item, item_type="contacts")
 
     async def store_dynamic(self, dynamic_item: Dict):
         """
@@ -115,10 +110,7 @@ class BiliCsvStoreImplement(AbstractStore):
         Returns:
 
         """
-        await self.file_writer.write_to_csv(
-            item=dynamic_item,
-            item_type="dynamics"
-        )
+        await self.file_writer.write_to_csv(item=dynamic_item, item_type="dynamics")
 
 
 class BiliDbStoreImplement(AbstractStore):
@@ -135,7 +127,9 @@ class BiliDbStoreImplement(AbstractStore):
         content_item["create_time"] = int(content_item.get("create_time", 0) or 0)
 
         async with get_session() as session:
-            result = await session.execute(select(BilibiliVideo).where(BilibiliVideo.video_id == video_id))
+            result = await session.execute(
+                select(BilibiliVideo).where(BilibiliVideo.video_id == video_id)
+            )
             video_detail = result.scalar_one_or_none()
 
             if not video_detail:
@@ -160,11 +154,19 @@ class BiliDbStoreImplement(AbstractStore):
         comment_item["video_id"] = int(comment_item.get("video_id", 0) or 0)
         comment_item["create_time"] = int(comment_item.get("create_time", 0) or 0)
         comment_item["like_count"] = str(comment_item.get("like_count", "0"))
-        comment_item["sub_comment_count"] = str(comment_item.get("sub_comment_count", "0"))
-        comment_item["parent_comment_id"] = str(comment_item.get("parent_comment_id", "0"))
+        comment_item["sub_comment_count"] = str(
+            comment_item.get("sub_comment_count", "0")
+        )
+        comment_item["parent_comment_id"] = str(
+            comment_item.get("parent_comment_id", "0")
+        )
 
         async with get_session() as session:
-            result = await session.execute(select(BilibiliVideoComment).where(BilibiliVideoComment.comment_id == comment_id))
+            result = await session.execute(
+                select(BilibiliVideoComment).where(
+                    BilibiliVideoComment.comment_id == comment_id
+                )
+            )
             comment_detail = result.scalar_one_or_none()
 
             if not comment_detail:
@@ -192,7 +194,9 @@ class BiliDbStoreImplement(AbstractStore):
         creator["is_official"] = int(creator.get("is_official", 0) or 0)
 
         async with get_session() as session:
-            result = await session.execute(select(BilibiliUpInfo).where(BilibiliUpInfo.user_id == creator_id))
+            result = await session.execute(
+                select(BilibiliUpInfo).where(BilibiliUpInfo.user_id == creator_id)
+            )
             creator_detail = result.scalar_one_or_none()
 
             if not creator_detail:
@@ -219,7 +223,10 @@ class BiliDbStoreImplement(AbstractStore):
 
         async with get_session() as session:
             result = await session.execute(
-                select(BilibiliContactInfo).where(BilibiliContactInfo.up_id == up_id, BilibiliContactInfo.fan_id == fan_id)
+                select(BilibiliContactInfo).where(
+                    BilibiliContactInfo.up_id == up_id,
+                    BilibiliContactInfo.fan_id == fan_id,
+                )
             )
             contact_detail = result.scalar_one_or_none()
 
@@ -244,7 +251,11 @@ class BiliDbStoreImplement(AbstractStore):
         dynamic_item["dynamic_id"] = dynamic_id
 
         async with get_session() as session:
-            result = await session.execute(select(BilibiliUpDynamic).where(BilibiliUpDynamic.dynamic_id == dynamic_id))
+            result = await session.execute(
+                select(BilibiliUpDynamic).where(
+                    BilibiliUpDynamic.dynamic_id == dynamic_id
+                )
+            )
             dynamic_detail = result.scalar_one_or_none()
 
             if not dynamic_detail:
@@ -263,7 +274,8 @@ class BiliJsonStoreImplement(AbstractStore):
     def __init__(self):
         self.file_writer = AsyncFileWriter(
             crawler_type=crawler_type_var.get(),
-            platform="bili"
+            platform="bili",
+            keyword=source_keyword_var.get(),
         )
 
     async def store_content(self, content_item: Dict):
@@ -276,8 +288,7 @@ class BiliJsonStoreImplement(AbstractStore):
 
         """
         await self.file_writer.write_single_item_to_json(
-            item=content_item,
-            item_type="contents"
+            item=content_item, item_type="contents"
         )
 
     async def store_comment(self, comment_item: Dict):
@@ -290,8 +301,7 @@ class BiliJsonStoreImplement(AbstractStore):
 
         """
         await self.file_writer.write_single_item_to_json(
-            item=comment_item,
-            item_type="comments"
+            item=comment_item, item_type="comments"
         )
 
     async def store_creator(self, creator: Dict):
@@ -304,8 +314,7 @@ class BiliJsonStoreImplement(AbstractStore):
 
         """
         await self.file_writer.write_single_item_to_json(
-            item=creator,
-            item_type="creators"
+            item=creator, item_type="creators"
         )
 
     async def store_contact(self, contact_item: Dict):
@@ -318,8 +327,7 @@ class BiliJsonStoreImplement(AbstractStore):
 
         """
         await self.file_writer.write_single_item_to_json(
-            item=contact_item,
-            item_type="contacts"
+            item=contact_item, item_type="contacts"
         )
 
     async def store_dynamic(self, dynamic_item: Dict):
@@ -332,48 +340,32 @@ class BiliJsonStoreImplement(AbstractStore):
 
         """
         await self.file_writer.write_single_item_to_json(
-            item=dynamic_item,
-            item_type="dynamics"
+            item=dynamic_item, item_type="dynamics"
         )
-
 
 
 class BiliJsonlStoreImplement(AbstractStore):
     def __init__(self):
         self.file_writer = AsyncFileWriter(
             crawler_type=crawler_type_var.get(),
-            platform="bili"
+            platform="bili",
+            keyword=source_keyword_var.get(),
         )
 
     async def store_content(self, content_item: Dict):
-        await self.file_writer.write_to_jsonl(
-            item=content_item,
-            item_type="contents"
-        )
+        await self.file_writer.write_to_jsonl(item=content_item, item_type="contents")
 
     async def store_comment(self, comment_item: Dict):
-        await self.file_writer.write_to_jsonl(
-            item=comment_item,
-            item_type="comments"
-        )
+        await self.file_writer.write_to_jsonl(item=comment_item, item_type="comments")
 
     async def store_creator(self, creator: Dict):
-        await self.file_writer.write_to_jsonl(
-            item=creator,
-            item_type="creators"
-        )
+        await self.file_writer.write_to_jsonl(item=creator, item_type="creators")
 
     async def store_contact(self, contact_item: Dict):
-        await self.file_writer.write_to_jsonl(
-            item=contact_item,
-            item_type="contacts"
-        )
+        await self.file_writer.write_to_jsonl(item=contact_item, item_type="contacts")
 
     async def store_dynamic(self, dynamic_item: Dict):
-        await self.file_writer.write_to_jsonl(
-            item=dynamic_item,
-            item_type="dynamics"
-        )
+        await self.file_writer.write_to_jsonl(item=dynamic_item, item_type="dynamics")
 
 
 class BiliSqliteStoreImplement(BiliDbStoreImplement):
@@ -399,9 +391,11 @@ class BiliMongoStoreImplement(AbstractStore):
         await self.mongo_store.save_or_update(
             collection_suffix="contents",
             query={"video_id": video_id},
-            data=content_item
+            data=content_item,
         )
-        utils.logger.info(f"[BiliMongoStoreImplement.store_content] Saved video {video_id} to MongoDB")
+        utils.logger.info(
+            f"[BiliMongoStoreImplement.store_content] Saved video {video_id} to MongoDB"
+        )
 
     async def store_comment(self, comment_item: Dict):
         """
@@ -416,9 +410,11 @@ class BiliMongoStoreImplement(AbstractStore):
         await self.mongo_store.save_or_update(
             collection_suffix="comments",
             query={"comment_id": comment_id},
-            data=comment_item
+            data=comment_item,
         )
-        utils.logger.info(f"[BiliMongoStoreImplement.store_comment] Saved comment {comment_id} to MongoDB")
+        utils.logger.info(
+            f"[BiliMongoStoreImplement.store_comment] Saved comment {comment_id} to MongoDB"
+        )
 
     async def store_creator(self, creator_item: Dict):
         """
@@ -431,11 +427,11 @@ class BiliMongoStoreImplement(AbstractStore):
             return
 
         await self.mongo_store.save_or_update(
-            collection_suffix="creators",
-            query={"user_id": user_id},
-            data=creator_item
+            collection_suffix="creators", query={"user_id": user_id}, data=creator_item
         )
-        utils.logger.info(f"[BiliMongoStoreImplement.store_creator] Saved creator {user_id} to MongoDB")
+        utils.logger.info(
+            f"[BiliMongoStoreImplement.store_creator] Saved creator {user_id} to MongoDB"
+        )
 
 
 class BiliExcelStoreImplement:
@@ -443,7 +439,7 @@ class BiliExcelStoreImplement:
 
     def __new__(cls, *args, **kwargs):
         from store.excel_store_base import ExcelStoreBase
+
         return ExcelStoreBase.get_instance(
-            platform="bilibili",
-            crawler_type=crawler_type_var.get()
+            platform="bilibili", crawler_type=crawler_type_var.get()
         )

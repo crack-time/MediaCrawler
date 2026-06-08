@@ -36,7 +36,7 @@ from database.db_session import get_session
 from database.models import DouyinAweme, DouyinAwemeComment, DyCreator
 from tools import utils, words
 from tools.async_file_writer import AsyncFileWriter
-from var import crawler_type_var
+from var import crawler_type_var, source_keyword_var
 from database.mongodb_store_base import MongoDBStoreBase
 
 
@@ -44,7 +44,8 @@ class DouyinCsvStoreImplement(AbstractStore):
     def __init__(self):
         self.file_writer = AsyncFileWriter(
             crawler_type=crawler_type_var.get(),
-            platform="douyin"
+            platform="douyin",
+            keyword=source_keyword_var.get(),
         )
 
     async def store_content(self, content_item: Dict):
@@ -56,10 +57,7 @@ class DouyinCsvStoreImplement(AbstractStore):
         Returns:
 
         """
-        await self.file_writer.write_to_csv(
-            item=content_item,
-            item_type="contents"
-        )
+        await self.file_writer.write_to_csv(item=content_item, item_type="contents")
 
     async def store_comment(self, comment_item: Dict):
         """
@@ -70,10 +68,7 @@ class DouyinCsvStoreImplement(AbstractStore):
         Returns:
 
         """
-        await self.file_writer.write_to_csv(
-            item=comment_item,
-            item_type="comments"
-        )
+        await self.file_writer.write_to_csv(item=comment_item, item_type="comments")
 
     async def store_creator(self, creator: Dict):
         """
@@ -84,10 +79,7 @@ class DouyinCsvStoreImplement(AbstractStore):
         Returns:
 
         """
-        await self.file_writer.write_to_csv(
-            item=creator,
-            item_type="creators"
-        )
+        await self.file_writer.write_to_csv(item=creator, item_type="creators")
 
 
 class DouyinDbStoreImplement(AbstractStore):
@@ -99,7 +91,9 @@ class DouyinDbStoreImplement(AbstractStore):
         """
         aweme_id = int(content_item.get("aweme_id"))
         async with get_session() as session:
-            result = await session.execute(select(DouyinAweme).where(DouyinAweme.aweme_id == aweme_id))
+            result = await session.execute(
+                select(DouyinAweme).where(DouyinAweme.aweme_id == aweme_id)
+            )
             aweme_detail = result.scalar_one_or_none()
 
             if not aweme_detail:
@@ -120,7 +114,11 @@ class DouyinDbStoreImplement(AbstractStore):
         """
         comment_id = int(comment_item.get("comment_id"))
         async with get_session() as session:
-            result = await session.execute(select(DouyinAwemeComment).where(DouyinAwemeComment.comment_id == comment_id))
+            result = await session.execute(
+                select(DouyinAwemeComment).where(
+                    DouyinAwemeComment.comment_id == comment_id
+                )
+            )
             comment_detail = result.scalar_one_or_none()
 
             if not comment_detail:
@@ -140,7 +138,9 @@ class DouyinDbStoreImplement(AbstractStore):
         """
         user_id = creator.get("user_id")
         async with get_session() as session:
-            result = await session.execute(select(DyCreator).where(DyCreator.user_id == user_id))
+            result = await session.execute(
+                select(DyCreator).where(DyCreator.user_id == user_id)
+            )
             user_detail = result.scalar_one_or_none()
 
             if not user_detail:
@@ -157,7 +157,8 @@ class DouyinJsonStoreImplement(AbstractStore):
     def __init__(self):
         self.file_writer = AsyncFileWriter(
             crawler_type=crawler_type_var.get(),
-            platform="douyin"
+            platform="douyin",
+            keyword=source_keyword_var.get(),
         )
 
     async def store_content(self, content_item: Dict):
@@ -170,8 +171,7 @@ class DouyinJsonStoreImplement(AbstractStore):
 
         """
         await self.file_writer.write_single_item_to_json(
-            item=content_item,
-            item_type="contents"
+            item=content_item, item_type="contents"
         )
 
     async def store_comment(self, comment_item: Dict):
@@ -184,8 +184,7 @@ class DouyinJsonStoreImplement(AbstractStore):
 
         """
         await self.file_writer.write_single_item_to_json(
-            item=comment_item,
-            item_type="comments"
+            item=comment_item, item_type="comments"
         )
 
     async def store_creator(self, creator: Dict):
@@ -198,36 +197,26 @@ class DouyinJsonStoreImplement(AbstractStore):
 
         """
         await self.file_writer.write_single_item_to_json(
-            item=creator,
-            item_type="creators"
+            item=creator, item_type="creators"
         )
-
 
 
 class DouyinJsonlStoreImplement(AbstractStore):
     def __init__(self):
         self.file_writer = AsyncFileWriter(
             crawler_type=crawler_type_var.get(),
-            platform="douyin"
+            platform="douyin",
+            keyword=source_keyword_var.get(),
         )
 
     async def store_content(self, content_item: Dict):
-        await self.file_writer.write_to_jsonl(
-            item=content_item,
-            item_type="contents"
-        )
+        await self.file_writer.write_to_jsonl(item=content_item, item_type="contents")
 
     async def store_comment(self, comment_item: Dict):
-        await self.file_writer.write_to_jsonl(
-            item=comment_item,
-            item_type="comments"
-        )
+        await self.file_writer.write_to_jsonl(item=comment_item, item_type="comments")
 
     async def store_creator(self, creator: Dict):
-        await self.file_writer.write_to_jsonl(
-            item=creator,
-            item_type="creators"
-        )
+        await self.file_writer.write_to_jsonl(item=creator, item_type="creators")
 
 
 class DouyinSqliteStoreImplement(DouyinDbStoreImplement):
@@ -253,9 +242,11 @@ class DouyinMongoStoreImplement(AbstractStore):
         await self.mongo_store.save_or_update(
             collection_suffix="contents",
             query={"aweme_id": aweme_id},
-            data=content_item
+            data=content_item,
         )
-        utils.logger.info(f"[DouyinMongoStoreImplement.store_content] Saved aweme {aweme_id} to MongoDB")
+        utils.logger.info(
+            f"[DouyinMongoStoreImplement.store_content] Saved aweme {aweme_id} to MongoDB"
+        )
 
     async def store_comment(self, comment_item: Dict):
         """
@@ -270,9 +261,11 @@ class DouyinMongoStoreImplement(AbstractStore):
         await self.mongo_store.save_or_update(
             collection_suffix="comments",
             query={"comment_id": comment_id},
-            data=comment_item
+            data=comment_item,
         )
-        utils.logger.info(f"[DouyinMongoStoreImplement.store_comment] Saved comment {comment_id} to MongoDB")
+        utils.logger.info(
+            f"[DouyinMongoStoreImplement.store_comment] Saved comment {comment_id} to MongoDB"
+        )
 
     async def store_creator(self, creator_item: Dict):
         """
@@ -285,11 +278,11 @@ class DouyinMongoStoreImplement(AbstractStore):
             return
 
         await self.mongo_store.save_or_update(
-            collection_suffix="creators",
-            query={"user_id": user_id},
-            data=creator_item
+            collection_suffix="creators", query={"user_id": user_id}, data=creator_item
         )
-        utils.logger.info(f"[DouyinMongoStoreImplement.store_creator] Saved creator {user_id} to MongoDB")
+        utils.logger.info(
+            f"[DouyinMongoStoreImplement.store_creator] Saved creator {user_id} to MongoDB"
+        )
 
 
 class DouyinExcelStoreImplement:
@@ -297,7 +290,7 @@ class DouyinExcelStoreImplement:
 
     def __new__(cls, *args, **kwargs):
         from store.excel_store_base import ExcelStoreBase
+
         return ExcelStoreBase.get_instance(
-            platform="douyin",
-            crawler_type=crawler_type_var.get()
+            platform="douyin", crawler_type=crawler_type_var.get()
         )
